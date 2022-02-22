@@ -1,0 +1,537 @@
+# # imports
+# import pandas as pd
+# import numpy as np
+# from sklearn.cluster import KMeans
+# from sklearn.decomposition import PCA
+# from mpl_toolkits.mplot3d import Axes3D
+# import matplotlib.pyplot as plt
+#
+# rating = pd.read_csv('/content/drive/MyDrive/Dataset/rating.csv')
+# # rating = pd.read_csv('rating.csv')
+# # rating.head(1)
+#
+# anime0 = pd.read_csv('/content/drive/MyDrive/Dataset/anime.csv')
+# # anime0 = pd.read_csv('anime.csv')
+# anime_npk = anime0.set_index('anime_id')
+# # anime0.head(1)
+#
+# anime = anime0.drop(columns=['name', 'members', 'rating'])
+#
+# # spand genre in columns, one for each genre
+# def func(x):
+#     if x['genre'] is np.nan:
+#         return x
+#     else:
+#         genres = list(map(lambda y: y.strip(), x['genre'].split(',')))
+#         for g in genres:
+#             x[g] = 1
+#         return x
+#
+# anime2 = anime.apply(func, axis=1)
+# # expand type in columns, one for each type
+# one_hot = pd.get_dummies(anime2['type'])
+# one_hot[one_hot == 0] = np.nan
+# anime3 = (anime2
+#           .drop(columns=['type', 'episodes', 'genre'])
+#           .join(one_hot, rsuffix='-type'))
+#
+# rating_anime = rating.join(anime3.set_index('anime_id'), on='anime_id')
+#
+# rating_anime.loc[rating_anime['rating'] == -1, 'rating'] = 5
+#
+# # anime3 is the dataframe joined before.
+# # All columns are anime properties, except anime_id.
+# attr = anime3.columns.tolist()
+#
+# anime_class = anime3
+# anime_class = anime_class.set_index('anime_id')
+#
+# attr.remove('anime_id')
+#
+# rating_anime[attr] = rating_anime[attr].mul(rating_anime['rating'], axis=0)
+#
+# users = (rating_anime
+#          .drop(columns=['anime_id', 'rating'])
+#          .groupby(by='user_id')
+#          .mean())
+#
+# users = users.fillna(value=0)
+#
+# number_of_components = 20
+# pca = PCA(n_components=number_of_components)
+# # pca.set_params(n_components=number_of_components)
+# pca.fit(users)
+# users_pca = pca.transform(users)
+# users_pos_pca = pd.DataFrame(users_pca)
+# users_pos_pca['user_id'] = users.index
+# users_pos_pca = users_pos_pca.set_index('user_id')
+# users_pos_pca.head(1)
+#
+# inertia = []
+# scores = []
+# for n_clusters in range(2, 12):
+#     kmeans = KMeans(n_clusters=n_clusters)
+#     kmeans.fit(users_pos_pca)
+#     inertia.append(kmeans.inertia_)
+#
+# #project the users feature vector in 3 dimensions
+# users_with_label = pd.DataFrame(PCA(n_components=3).fit_transform(users))
+# users_with_label['user_id'] = users.index
+# users_with_label = users_with_label.set_index('user_id')
+#
+# #find each user's cluster
+# kmeans = KMeans(n_clusters=6, n_init=30)
+# users_with_label['label'] = kmeans.fit_predict(users_pos_pca)
+# users_with_label.head(10)
+#
+# rating_user = rating.join(users_with_label[['label']], on='user_id')
+# rating_user.loc[rating_user['rating'] == -1, 'rating'] = np.nan
+# rating_user.head(1)
+# CD = kmeans.cluster_centers_
+#
+# groups = (rating_user[['anime_id', 'rating', 'label']]
+#           .groupby(by=['label', 'anime_id'])
+#           .rating.agg(['mean', 'count']))
+#
+# groups['obj'] = groups['mean']*groups['count']
+#
+# groups_obj = groups[['obj']].dropna()
+#
+# dogs = groups_obj.index.get_level_values(0).unique().tolist()
+# rec = []
+# for dog in dogs:
+#     rec.append(
+#         groups_obj
+#         .loc[dog]
+#         .sort_values(by='obj', ascending=False)
+#         .reset_index()
+#         .join(
+#             anime0[['name', 'anime_id']].set_index('anime_id'),
+#             on='anime_id')
+#         ['name']
+#         .rename(dog)
+#     )
+# rec = pd.concat(rec, axis=1)
+#
+# #try use anime_class['anime_id/genre']
+# #in this case new_user has type
+#<pandas.core.series.Series>
+def get_top_5_anime(hist_d, id):#, watched):
+    print(type(hist_d))
+    print(hist_d)
+    # *2, because dataset has rating fro/m 0 to 10
+    hist_d = hist_d.drop(hist_d[hist_d.user_id == id].index)
+    print(hist_d)
+    my = hist_d.drop(columns='user_id')
+    for gg in attr:
+        my[gg] = np.nan
+    for ind in my.index:
+        rt = my['rating'][ind]
+        for gg in attr:
+            my[gg][ind] = rt*2
+    # print(my)
+    new_user = (my.drop(columns=['anime_id', 'rating']).mean())
+    # my = hist_d
+    # print(new_user)
+    # return 'LOX'
+    # for index_in_attr in attr.
+    # new_user = my.drop('anime_id', 'rating')
+    new_user = new_user.to_frame()
+    print('good')
+    #we must have frame_format
+    user_one_pca = pca.transform(new_user.T)
+    user_one_pos_pca = pd.DataFrame(user_one_pca)
+    mn = 0
+    label = 0
+    for i in range(0, 20):
+        mn += (CD[0][i]-user_one_pos_pca.at[0, i])**2
+    for i in range(1, 6):
+        to = 0
+        for j in range(0, 20):
+            to += (CD[i][j]-user_one_pos_pca.at[0, j])**2
+        if to < mn:
+            mn = to
+            label = i
+    my_rec = rec[label][0]
+    # index = 1
+    # while watched[my_rec]:
+    #   my_rec = rec[label][inedx]
+    #   index += 1
+    return anime_npk.loc[my_rec]['name']
+    # return my_rec
+# get_top_5_anime(users.loc[1])
+print('bot is started')
+
+import logging
+import typing
+from time import sleep
+
+from googlesearch import search
+import wikipedia
+
+import aiogram.utils.markdown as md
+import pandas as pd
+import numpy as np
+from aiogram import Bot, Dispatcher, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.contrib.middlewares.logging import LoggingMiddleware
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters import Text
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.types import ParseMode
+from aiogram.utils import executor
+from aiogram.utils.callback_data import CallbackData
+
+logging.basicConfig(level=logging.INFO)
+
+bot = Bot(token='1867120881:AAGgZxcoaBBc1LiG-ONEhysDiEdI4CXy6oQ')
+
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
+dp.middleware.setup(LoggingMiddleware())
+
+
+class Form(StatesGroup):
+    anime1 = State()
+    anime2 = State()
+    anime3 = State()
+    anime4 = State()
+    anime5 = State()
+
+
+class FL(StatesGroup):
+    fl = State()
+
+
+choise_cb = CallbackData('vote', 'action')
+rating_cb = CallbackData('vote', 'action')
+ans = CallbackData('vote', 'action')
+anime_cb = CallbackData('vote', 'action')
+rating_cb_anime = CallbackData('vote', 'action')
+
+anime_gl: str = ""
+anime_id_gl: str = ""
+
+
+def get_keyboard():
+    return types.InlineKeyboardMarkup().row(
+        types.InlineKeyboardButton('Да', callback_data=choise_cb.new(action='yes')),
+        types.InlineKeyboardButton('Нет', callback_data=choise_cb.new(action='no')),
+    )
+
+
+def get_ans():
+    return types.InlineKeyboardMarkup().row(
+        types.InlineKeyboardButton('Погнали', callback_data=ans.new(action='yes')),
+    )
+
+
+def get_anime_b():
+    return types.InlineKeyboardMarkup().row(
+        types.InlineKeyboardButton('Порекомендовать', callback_data=anime_cb.new(action='get')),
+    )
+
+
+def get_keyboard_rating():
+    markup = types.InlineKeyboardMarkup(row_width=5)
+    markup.add(
+        types.InlineKeyboardButton('1', callback_data=rating_cb.new(action='1')),
+        types.InlineKeyboardButton('2', callback_data=rating_cb.new(action='2')),
+        types.InlineKeyboardButton('3', callback_data=rating_cb.new(action='3')),
+        types.InlineKeyboardButton('4', callback_data=rating_cb.new(action='4')),
+        types.InlineKeyboardButton('5', callback_data=rating_cb.new(action='5')),
+    )
+    markup.add(
+        types.InlineKeyboardButton('Не смотрел', callback_data=rating_cb.new(action='not')),
+    )
+    return markup
+
+
+def get_keyboard_rating_anime():
+    global anime_gl
+    anime_gl += ' смотреть'
+    markup = types.InlineKeyboardMarkup(row_width=5)
+    markup.add(
+        types.InlineKeyboardButton('1', callback_data=rating_cb_anime.new(action='1')),
+        types.InlineKeyboardButton('2', callback_data=rating_cb_anime.new(action='2')),
+        types.InlineKeyboardButton('3', callback_data=rating_cb_anime.new(action='3')),
+        types.InlineKeyboardButton('4', callback_data=rating_cb_anime.new(action='4')),
+        types.InlineKeyboardButton('5', callback_data=rating_cb_anime.new(action='5')),
+    )
+    # sr = str(search(anime_gl, tld="co.in", num=1, stop=1, pause=2))
+    st = ""
+    for i in search(anime_gl, tld="co.in", num=1, stop=1, pause=2):
+        sr = i
+    markup.add(
+        types.InlineKeyboardButton('Перейти на сайт', url=sr)
+    )
+    return markup
+
+
+@dp.message_handler(commands='new_anime')
+async def cmd_new_anime(message: types.Message):
+    await bot.send_message(message.chat.id, "Ты готов посмотреть что-то новое?", reply_markup=get_anime_b())
+
+
+@dp.message_handler(commands='start')
+async def cmd_start(message: types.Message):
+    # await Form.anime1.set()
+
+    msg = "Привет, я бот, который пересмотрел всё аниме ради того, " \
+          "чтобы порекомендовать тебе что-то стоящее! "
+
+    hist_d = pd.read_csv("hist_db.csv")
+    user_id_list = hist_d['user_id'].to_list()
+    user_id = int(message.chat.id)
+    cnt = 0
+    if user_id in user_id_list:
+        msg += "Я вижу, что ты уже был тут раньше, желаешь перезаполнить анкету?"
+        await bot.send_message(message.chat.id, msg, reply_markup=get_keyboard())
+    else:
+        msg += "Давай пройдём опрос, чтобы узнать твои предпочтения"
+        await bot.send_message(message.chat.id, msg, reply_markup=get_ans())
+
+
+@dp.callback_query_handler(choise_cb.filter(action=['yes', 'no']))
+async def callback_vote_action(query: types.CallbackQuery, callback_data: typing.Dict[str, str]):
+    logging.info('Got this callback data: %r', callback_data)  # callback_data contains all info from callback data
+
+    await query.answer()  # don't forget to answer callback query as soon as possible
+
+    callback_data_action = callback_data['action']
+
+    if callback_data_action == 'yes':
+        hist_d = pd.read_csv("hist_db.csv")
+        hist_d = hist_d.drop(hist_d[hist_d.user_id == query.message.chat.id].index)
+        hist_d.to_csv("hist_db.csv", index=False)
+        await Form.anime1.set()
+        anime = pd.read_csv("anime.csv")
+        anime.sort_values('rating', ascending=True)
+        new_df = anime.head(5).drop(['members', 'genre', 'type', 'episodes', 'rating'], axis=1).copy()
+        msg = 'Anime: ' + str(new_df['name'][0])
+        anime_id = int(new_df['anime_id'][0])
+        await query.message.edit_text(msg, reply_markup=get_keyboard_rating())
+    # начало опросика
+    else:
+        await query.message.edit_text("Не работает")
+    #     кидать аниме
+
+
+@dp.callback_query_handler(rating_cb.filter(action=['1', '2', '3', '4', '5', 'not']), state=Form.anime1)
+async def anime1_choose(query: types.CallbackQuery, callback_data: typing.Dict[str, str], state=FSMContext):
+    await query.answer()
+    ans = callback_data['action']
+    anime = pd.read_csv("anime.csv")
+    anime.sort_values('rating', ascending=True)
+    new_df = anime.head(5).drop(['members', 'genre', 'type', 'episodes', 'rating'], axis=1).copy()
+    msg = 'Anime: ' + str(new_df['name'][1])
+    anime_id = int(new_df['anime_id'][1])
+
+    if ans == 'not':
+        async with state.proxy() as data:
+            data['anime1'] = -1
+    else:
+        async with state.proxy() as data:
+            data['anime1'] = int(ans)
+        hist_d = pd.read_csv('hist_db.csv')
+        hist_d = hist_d.append(
+            {'user_id': query.message.chat.id,
+             'anime_id': int(new_df['anime_id'][0]),
+             'rating': int(ans)
+             },
+            ignore_index=True)
+        hist_d.to_csv("hist_db.csv", index=False)
+    await query.message.edit_text(msg, reply_markup=get_keyboard_rating())
+    await Form.next()
+
+
+@dp.callback_query_handler(rating_cb.filter(action=['1', '2', '3', '4', '5', 'not']), state=Form.anime2)
+async def anime2_choose(query: types.CallbackQuery, callback_data: typing.Dict[str, str], state=FSMContext):
+    await Form.next()
+    await query.answer()
+    ans = callback_data['action']
+    anime = pd.read_csv("anime.csv")
+    anime.sort_values('rating', ascending=True)
+    new_df = anime.head(5).drop(['members', 'genre', 'type', 'episodes', 'rating'], axis=1).copy()
+    msg = 'Anime: ' + str(new_df['name'][2])
+    anime_id = int(new_df['anime_id'][2])
+
+    if ans == 'not':
+        async with state.proxy() as data:
+            data['anime2'] = -1
+    else:
+        async with state.proxy() as data:
+            data['anime2'] = int(ans)
+        hist_d = pd.read_csv('hist_db.csv')
+        hist_d = hist_d.append(
+            {'user_id': query.message.chat.id,
+             'anime_id': int(new_df['anime_id'][1]),
+             'rating': int(ans)
+             },
+            ignore_index=True)
+        hist_d.to_csv('hist_db.csv', index=False)
+
+    await query.message.edit_text(msg, reply_markup=get_keyboard_rating())
+
+
+@dp.callback_query_handler(rating_cb.filter(action=['1', '2', '3', '4', '5', 'not']), state=Form.anime3)
+async def anime3_choose(query: types.CallbackQuery, callback_data: typing.Dict[str, str], state=FSMContext):
+    await Form.next()
+    await query.answer()
+    ans = callback_data['action']
+    anime = pd.read_csv("anime.csv")
+    anime.sort_values('rating', ascending=True)
+    new_df = anime.head(5).drop(['members', 'genre', 'type', 'episodes', 'rating'], axis=1).copy()
+    msg = 'Anime: ' + str(new_df['name'][3])
+    anime_id = int(new_df['anime_id'][3])
+
+    if ans == 'not':
+        async with state.proxy() as data:
+            data['anime3'] = -1
+    else:
+        async with state.proxy() as data:
+            data['anime3'] = int(ans)
+        hist_d = pd.read_csv('hist_db.csv')
+        hist_d = hist_d.append(
+            {'user_id': query.message.chat.id,
+             'anime_id': int(new_df['anime_id'][2]),
+             'rating': int(ans)
+             },
+            ignore_index=True)
+        hist_d.to_csv('hist_db.csv', index=False)
+
+    await query.message.edit_text(msg, reply_markup=get_keyboard_rating())
+
+
+@dp.callback_query_handler(rating_cb.filter(action=['1', '2', '3', '4', '5', 'not']), state=Form.anime4)
+async def anime4_choose(query: types.CallbackQuery, callback_data: typing.Dict[str, str], state=FSMContext):
+    await Form.next()
+    await query.answer()
+    ans = callback_data['action']
+    anime = pd.read_csv("anime.csv")
+    anime.sort_values('rating', ascending=True)
+    new_df = anime.head(5).drop(['members', 'genre', 'type', 'episodes', 'rating'], axis=1).copy()
+    msg = 'Anime: ' + str(new_df['name'][4])
+    anime_id = int(new_df['anime_id'][4])
+
+    if ans == 'not':
+        async with state.proxy() as data:
+            data['anime4'] = -1
+    else:
+        async with state.proxy() as data:
+            data['anime4'] = int(ans)
+        hist_d = pd.read_csv('hist_db.csv')
+        hist_d = hist_d.append(
+            {'user_id': query.message.chat.id,
+             'anime_id': int(new_df['anime_id'][3]),
+             'rating': int(ans)
+             },
+            ignore_index=True)
+        hist_d.to_csv('hist_db.csv', index=False)
+
+    await query.message.edit_text(msg, reply_markup=get_keyboard_rating())
+
+
+@dp.callback_query_handler(rating_cb.filter(action=['1', '2', '3', '4', '5', 'not']), state=Form.anime5)
+async def anime5_choose(query: types.CallbackQuery, callback_data: typing.Dict[str, str], state=FSMContext):
+    # await Form.next()
+    await query.answer()
+    ans = callback_data['action']
+    anime = pd.read_csv("anime.csv")
+    anime.sort_values('rating', ascending=True)
+    new_df = anime.head(5).drop(['members', 'genre', 'type', 'episodes', 'rating'], axis=1).copy()
+
+    if ans == 'not':
+        async with state.proxy() as data:
+            data['anime5'] = -1
+    else:
+        async with state.proxy() as data:
+            data['anime5'] = int(ans)
+        hist_d = pd.read_csv('hist_db.csv')
+        hist_d = hist_d.append(
+            {'user_id': query.message.chat.id,
+             'anime_id': int(new_df['anime_id'][4]),
+             'rating': int(ans)
+             },
+            ignore_index=True)
+        hist_d.to_csv('hist_db.csv', index=False)
+    # await query.message.reply('Finished')
+    # await query.message.delete()
+    cnt = 0
+    async with state.proxy() as data:
+        for i in data:
+            cnt += data[i]
+            # print(cnt)
+        if cnt < 0:
+            # добавить порекомендованное аниме после оценки
+            msg = "Я вижу, что ты ещё не смотрел аниме, так что давай начнём с чего-то популярного"
+            await query.message.edit_text(msg, reply_markup=get_anime_b())
+        # else:
+        #
+    # async with state.proxy() as data:
+    #     await bot.send_message(query.message.chat.id, data['anime1'])
+    # await query.message.edit_text(msg, reply_markup=get_keyboard_rating())
+    await state.finish()
+
+
+@dp.callback_query_handler(anime_cb.filter(action=['get']))
+async def get_anime(query: types.CallbackQuery, callback_data: typing.Dict[str, str]):
+    await query.answer()
+    hist_d = pd.read_csv("hist_db.csv")
+    user_id_list = hist_d['user_id'].to_list()
+    if query.message.chat.id in user_id_list:
+        print('ok, let start')
+        await bot.send_message(query.message.chat.id, str(get_top_5_anime(hist_d, query.message.chat.id)))
+        #     requset to the ml and return anime result
+        cnt = 0
+    else:
+        anime = pd.read_csv("anime.csv")
+        anime.sort_values(['members', 'rating'], ascending=False)
+        global anime_gl, anime_id_gl
+        anime_gl = anime['name'][0]
+        anime_id_gl = anime['anime_id'][0]
+        print(anime_id_gl)
+        wikipedia.set_lang('ru')
+        cur = wikipedia.search(anime_gl)
+        for i in cur:
+            await query.message.edit_text(anime_gl + "\n" + wikipedia.page(i).summary,
+                                          reply_markup=get_keyboard_rating_anime())
+            break
+
+
+@dp.callback_query_handler(rating_cb_anime.filter(action=['1', '2', '3', '4', '5']))
+async def get_rating(query: types.CallbackQuery, callback_data: typing.Dict[str, str]):
+    await query.answer()
+    ans1 = callback_data['action']
+    #     add to db and forget
+    hist_d = pd.read_csv("hist_db.csv")
+    # global anime_id_gl
+    # print(anime_name)
+    # anime = pd.read_csv('anime.csv')
+    # print(hist_d.head())
+    # new_df = anime.drop(anime[anime['name'] != anime_gl].index)
+    hist_d = hist_d.append({'user_id': query.message.chat.id,
+                            'anime_id': anime_id_gl,
+                            'rating': int(ans1)},
+                           ignore_index=True)
+    # print(hist_d.head())
+    hist_d.to_csv("hist_db.csv", index=False)
+    msg = "Надеюсь тебе понравилось то, что я тебе порекомендовал, приходи ещё!"
+    await query.message.edit_text(msg, reply_markup=get_anime_b())
+
+
+@dp.message_handler(state='*', commands='cancel')
+@dp.message_handler(Text(equals='cancel', ignore_case=True), state='*')
+async def cancel_handler(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+    logging.info('Cancelling state %r', current_state)
+
+    await state.finish()
+
+    await message.reply('Вы успешно отменили действие', reply_markup=types.ReplyKeyboardRemove())
+
+
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
