@@ -1,14 +1,21 @@
-
 # imports
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from array import *
-
-
+from datetime import datetime
+import time
+global rating
+global pca
+global users
+global users_pca
+global users_pos_pca
+global sum
+global kol
 rating = pd.read_csv('rating.csv')
-
+hist = pd.read_csv('hist_db.csv')
+rating = rating.merge(hist, how='outer')
 anime0 = pd.read_csv('anime.csv')
 anime_npk = anime0.set_index('anime_id')
 
@@ -32,6 +39,7 @@ one_hot[one_hot == 0] = np.nan
 anime3 = (anime2
           .drop(columns=['type', 'episodes', 'genre'])
           .join(one_hot, rsuffix='-type'))
+#############################################()
 
 rating_anime = rating.join(anime3.set_index('anime_id'), on='anime_id')
 
@@ -59,7 +67,9 @@ pca.fit(users)
 acc_var = np.cumsum(pca.explained_variance_ratio_)
 
 #4
-number_of_components = 30
+
+
+number_of_components = 18
 pca.set_params(n_components=number_of_components)
 pca.fit(users)
 users_pca = pca.transform(users)
@@ -68,13 +78,14 @@ users_pos_pca['user_id'] = users.index
 users_pos_pca = users_pos_pca.set_index('user_id')
 
 #5
-users_with_label = pd.DataFrame(PCA(n_components=3).fit_transform(users))
+users_with_label = pd.DataFrame(PCA(n_components=18).fit_transform(users))
 users_with_label['user_id'] = users.index
 users_with_label = users_with_label.set_index('user_id')
 
-kmeans = KMeans(n_clusters=8, n_init=30)
+############################################ (8.4s)
+kmeans = KMeans(n_clusters=6, n_init=30)
 users_with_label['label'] = kmeans.fit_predict(users_pos_pca)
-
+############################################
 #6
 rating_user = rating.join(users_with_label[['label']], on='user_id')
 rating_user.loc[rating_user['rating'] == -1, 'rating'] = np.nan
@@ -114,9 +125,9 @@ def get_the_best(index):
     x_pd_pca = users_pos_pca.loc[index]
     mn = 1e18
     last = -1
-    for tim in range(1, 8, 1):
+    for tim in range(1, 6, 1):
         nw = 0
-        for i in range(1, 30, 1):
+        for i in range(1, number_of_components, 1):
             nw += (CD[tim][i] - x_pd_pca[i]) * (CD[tim][i] - x_pd_pca[i])
         if nw < mn:
             mn = nw
@@ -129,7 +140,38 @@ def get_the_best(index):
         if rating.loc[rating['anime_id']==ANIME_ID].loc[
             rating['user_id']==index].empty:
             return i
+#################AS LONG AS MY DICK
+sum = users.copy(deep=True)
+kol = users.copy(deep=True)
+for i in users.index:
+    for j in sum.columns:
+        sum[j][i] = 0
+        kol[j][i] = 0
+###################################
+anime3 = anime3.fillna(0)
+def add(ANIME_NAME, USER_ID, RATING):
+    global rating
+    global users_pca
+    global users_pos_pca
+    global pca
+    global users
+    global sum
+    global kol
+    anime_id = index_by_name.loc[ANIME_NAME]['anime_id']
+    for i in anime3.loc[anime3['anime_id'] == anime_id]:
+        if i != 'anime_id' and anime3.loc[anime3['anime_id'] == anime_id][i].values != 0:
+            sum[i][USER_ID] += RATING
+            kol[i][USER_ID] += 1
+            users[i][USER_ID] = sum[i][USER_ID]/kol[i][USER_ID]
 
+    rating = rating.append({'user_id': int(USER_ID),'anime_id': int(anime_id),'rating': int(RATING)},ignore_index=True)
+    number_of_components = 30
+    pca.set_params(n_components=number_of_components)
+    pca.fit(users)
+    users_pca = pca.transform(users)
+    users_pos_pca = pd.DataFrame(users_pca)
+    users_pos_pca['user_id'] = users.index
+    users_pos_pca = users_pos_pca.set_index('user_id')
 print(rec.head(10))
 print(CD)
 # For recommendations use
