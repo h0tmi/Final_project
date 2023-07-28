@@ -1,3 +1,25 @@
-There is big file with rating, so we can't upload it on github. 
-Check this link:
-  https://drive.google.com/file/d/1zRPtSKsPDMByUkUigZkSNagP-SNQcyGN/view?usp=sharing
+# Recomendation Library
+This library can recommend to you any products and can be easily integrated to your project.
+## Installation
+To install this library you should install Python3 first, then open terminal and put there this string:
+  * **pip install recommendation-library**
+## Fuctions
+### preparation()
+The input procedure accepts a dataset and prepares it to start working with our algorithm.
+### refresh()
+This procedure simply updates the cluster, because it doesn't refreshments after each request. This procedure takes a very long time, so use it with carefully, but remember to USE it.
+### add_rating()
+Procedure for adding a rating on the input user_id, rating, item_id
+### get()
+This function returns the item_id, the input is the user_id.
+### add_item()
+The input is: 
+  * item_id 
+  * genre
+
+Here genre is a string that lists all criteria separated by commas.
+
+This fucntion makes possible adding new items to the recomendation system.
+
+
+Note: This is a sample project
